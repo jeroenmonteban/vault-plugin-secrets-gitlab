@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xanzy/go-gitlab"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 const (

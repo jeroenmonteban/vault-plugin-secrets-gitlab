@@ -44,6 +44,11 @@ func (b *GitlabBackend) pathRoleTokenCreate(ctx context.Context, req *logical.Re
 	}
 
 	expiresAt := time.Now().UTC().Add(role.TokenTTL)
+	// Ensure expiresAt is at least tomorrow to avoid an unusable token. Required because of https://gitlab.com/gitlab-org/gitlab/-/issues/335535
+	if expiresAt.Before(time.Now().UTC().Truncate(24 * time.Hour).Add(24 * time.Hour)) {
+		expiresAt = time.Now().UTC().Truncate(24 * time.Hour).Add(24 * time.Hour)
+	}
+
 	b.Logger().Debug("generating access token for a role", "role_name", role.RoleName, "expires_at", expiresAt)
 	pat, err := gc.CreateProjectAccessToken(&role.BaseTokenStorage, &expiresAt)
 	if err != nil {
