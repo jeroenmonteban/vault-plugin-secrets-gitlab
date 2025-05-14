@@ -9,3 +9,4 @@ coverage_*
 .idea/
 vault_server.hcl
 vault-server-data
+.DS_Store

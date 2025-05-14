@@ -16,6 +16,8 @@ package gitlabtoken
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
@@ -149,14 +151,26 @@ func (b *GitlabBackend) pathTokenList(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse("failed to list project access tokens - " + err.Error()), nil
 	}
 
-	// Convert tokens to a list of maps for the response
-	var tokenList []map[string]interface{}
+	// Format tokens into a human-readable string
+	var formattedTokens []string
 	for _, token := range tokens {
-		tokenList = append(tokenList, tokenDetails(token))
+		formattedTokens = append(formattedTokens, fmt.Sprintf(
+			"ID: %d, Name: %s, Scopes: %v, Access Level: %d, Expires At: %s",
+			token.ID,
+			token.Name,
+			token.Scopes,
+			token.AccessLevel,
+			func() string {
+				if token.ExpiresAt != nil {
+					return token.ExpiresAt.String()
+				}
+				return "N/A"
+			}(),
+		))
 	}
 
 	return &logical.Response{Data: map[string]interface{}{
-		"tokens": tokenList,
+		"tokens": strings.Join(formattedTokens, "\n"),
 	}}, nil
 }
 
