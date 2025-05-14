@@ -14,7 +14,9 @@
 
 package gitlabtoken
 
-import "github.com/xanzy/go-gitlab"
+import (
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+)
 
 type PAT = gitlab.ProjectAccessToken
 
