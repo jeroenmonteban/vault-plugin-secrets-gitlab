@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xanzy/go-gitlab"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 const (
@@ -64,10 +64,6 @@ func (gc *gitlabClient) Valid() bool {
 	return gc != nil && time.Now().Before(gc.expiration)
 }
 
-// func (gc *gitlabClient) ListProjectAccessToken(pid int) ([]*PAT, error) {
-
-// 	return nil, nil
-// }
 func (gc *gitlabClient) CreateProjectAccessToken(tokenStorage *BaseTokenStorageEntry, expiresAt *time.Time) (*PAT, error) {
 	opt := gitlab.CreateProjectAccessTokenOptions{
 		Name:   &tokenStorage.Name,
