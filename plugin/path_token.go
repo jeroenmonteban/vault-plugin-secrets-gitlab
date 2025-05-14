@@ -16,6 +16,8 @@ package gitlabtoken
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
@@ -28,6 +30,10 @@ var accessTokenSchema = map[string]*framework.FieldSchema{
 	"id": {
 		Type:        framework.TypeInt,
 		Description: "Project ID to create a project access token for",
+	},
+	"token_id": {
+		Type:        framework.TypeInt,
+		Description: "The ID of the project access token to revoke",
 	},
 	"name": {
 		Type:        framework.TypeString,
@@ -117,6 +123,16 @@ func pathToken(b *GitlabBackend) []*framework.Path {
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathTokenCreate,
 				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathTokenList,
+					Summary:  "List project access tokens",
+					Examples: tokenListExamples,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathTokenRevoke,
+					Summary:  "Revoke a project access token",
+					Examples: tokenRevokeExamples,
+				},
 			},
 			HelpSynopsis:    pathTokenHelpSyn,
 			HelpDescription: pathTokenHelpDesc,
@@ -124,6 +140,81 @@ func pathToken(b *GitlabBackend) []*framework.Path {
 	}
 
 	return paths
+}
+
+func (b *GitlabBackend) pathTokenList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	gc, err := b.getClient(ctx, req.Storage)
+	if err != nil {
+		return logical.ErrorResponse("failed to obtain gitlab client - %s", err.Error()), nil
+	}
+
+	projectIDRaw, ok := data.GetOk("id")
+	if !ok {
+		return logical.ErrorResponse("missing required field 'id'"), nil
+	}
+	projectID := projectIDRaw.(int)
+
+	b.Logger().Debug("listing access tokens", "project_id", projectID)
+	tokens, err := gc.ListProjectAccessToken(projectID)
+	if err != nil {
+		return logical.ErrorResponse("failed to list project access tokens - " + err.Error()), nil
+	}
+
+	// Format tokens into a human-readable string
+	var formattedTokens []string
+	for _, token := range tokens {
+		formattedTokens = append(formattedTokens, fmt.Sprintf(
+			"ID: %d, Name: %s, Scopes: %v, Access Level: %d, Expires At: %s",
+			token.ID,
+			token.Name,
+			token.Scopes,
+			token.AccessLevel,
+			func() string {
+				if token.ExpiresAt != nil {
+					return token.ExpiresAt.String()
+				}
+				return "N/A"
+			}(),
+		))
+	}
+
+	return &logical.Response{Data: map[string]interface{}{
+		"tokens": strings.Join(formattedTokens, "\n"),
+	}}, nil
+}
+
+func (b *GitlabBackend) pathTokenRevoke(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	gc, err := b.getClient(ctx, req.Storage)
+	if err != nil {
+		return logical.ErrorResponse("failed to obtain gitlab client - %s", err.Error()), nil
+	}
+
+	projectIDRaw, ok := data.GetOk("id")
+	if !ok {
+		return logical.ErrorResponse("missing required field 'id'"), nil
+	}
+	projectID := projectIDRaw.(int)
+
+	tokenIDRaw, ok := data.GetOk("token_id")
+	if !ok {
+		return logical.ErrorResponse("missing required field 'token_id'"), nil
+	}
+	tokenID := tokenIDRaw.(int)
+
+	b.Logger().Debug("revoking access token", "project_id", projectID, "token_id", tokenID)
+	err = gc.RevokeProjectAccessToken(&BaseTokenStorageEntry{
+		ID:      projectID,
+		TokenID: tokenID,
+	})
+	if err != nil {
+		return logical.ErrorResponse("failed to revoke project access token - " + err.Error()), nil
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"message": fmt.Sprintf("Token with ID %d for project ID %d has been revoked", tokenID, projectID),
+		},
+	}, nil
 }
 
 const pathTokenHelpSyn = `Generate a project access token for a given project with token name, scopes.`
@@ -139,6 +230,25 @@ var tokenExamples = []framework.RequestExample{
 			"id":     1,
 			"name":   "MyProjectAccessToken",
 			"scopes": []string{"read_api", "read_repository"},
+		},
+	},
+}
+
+var tokenListExamples = []framework.RequestExample{
+	{
+		Description: "List project access tokens",
+		Data: map[string]interface{}{
+			"id": 1,
+		},
+	},
+}
+
+var tokenRevokeExamples = []framework.RequestExample{
+	{
+		Description: "Revoke a project access token",
+		Data: map[string]interface{}{
+			"id":       1,
+			"token_id": 12345,
 		},
 	},
 }

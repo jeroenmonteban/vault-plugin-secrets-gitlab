@@ -15,6 +15,7 @@
 package gitlabtoken
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -77,13 +78,35 @@ func (ac *mockGitlabClient) Valid() bool {
 	return true
 }
 
-// func (ac *mockGitlabClient) ListProjectAccessToken(id int) ([]*PAT, error) {
-// 	return nil, nil
-// }
+func (ac *mockGitlabClient) ListProjectAccessToken(id int) ([]*PAT, error) {
+	return nil, nil
+}
 func (ac *mockGitlabClient) CreateProjectAccessToken(tokenStorage *BaseTokenStorageEntry, expiresAt *time.Time) (*PAT, error) {
 	return nil, nil
 }
 
-// func (ac *mockGitlabClient) RevokeProjectAccessToken(tokenStorage *BaseTokenStorageEntry) error {
-// 	return nil
-// }
+func (ac *mockGitlabClient) RevokeProjectAccessToken(tokenStorage *BaseTokenStorageEntry) error {
+	// Simulate revoking a project access token
+	if tokenStorage.TokenID == 0 {
+		return fmt.Errorf("invalid token ID")
+	}
+	return nil
+}
+
+func TestRevokeProjectAccessToken(t *testing.T) {
+	t.Parallel()
+
+	mockClient := &mockGitlabClient{}
+	tokenStorage := &BaseTokenStorageEntry{
+		ID:      123, // Mock project ID
+		TokenID: 456, // Mock token ID
+	}
+
+	err := mockClient.RevokeProjectAccessToken(tokenStorage)
+	assert.NoError(t, err, "RevokeProjectAccessToken should not return an error for valid input")
+
+	// Test invalid token ID
+	tokenStorage.TokenID = 0
+	err = mockClient.RevokeProjectAccessToken(tokenStorage)
+	assert.Error(t, err, "RevokeProjectAccessToken should return an error for invalid token ID")
+}

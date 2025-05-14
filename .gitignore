@@ -7,3 +7,6 @@ coverage_*
 .tools/
 .go/
 .idea/
+vault_server.hcl
+vault-server-data
+.DS_Store
