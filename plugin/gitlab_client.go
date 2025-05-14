@@ -26,7 +26,9 @@ const (
 )
 
 type Client interface {
-	// ListProjectAccessToken(int) ([]*PAT, error)
+	// ListProjectAccessToken retrieves a list of project access tokens for a given project ID
+	ListProjectAccessToken(int) ([]*PAT, error)
+	// CreateProjectAccessToken create access token for given a project ID
 	CreateProjectAccessToken(*BaseTokenStorageEntry, *time.Time) (*PAT, error)
 	// RevokeProjectAccessToken(*BaseTokenStorageEntry) error
 	Valid() bool
@@ -64,10 +66,28 @@ func (gc *gitlabClient) Valid() bool {
 	return gc != nil && time.Now().Before(gc.expiration)
 }
 
-// func (gc *gitlabClient) ListProjectAccessToken(pid int) ([]*PAT, error) {
+func (gc *gitlabClient) ListProjectAccessToken(pid int) ([]*PAT, error) {
+	// Use the GitLab API client to list project access tokens
+	tokens, _, err := gc.client.ProjectAccessTokens.ListProjectAccessTokens(pid, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list project access tokens for project ID %d: %w", pid, err)
+	}
 
-// 	return nil, nil
-// }
+	// Convert the tokens to the PAT type
+	var result []*PAT
+	for _, token := range tokens {
+		result = append(result, &PAT{
+			ID:          token.ID,
+			Name:        token.Name,
+			Scopes:      token.Scopes,
+			ExpiresAt:   token.ExpiresAt,
+			AccessLevel: token.AccessLevel,
+		})
+	}
+
+	return result, nil
+}
+
 func (gc *gitlabClient) CreateProjectAccessToken(tokenStorage *BaseTokenStorageEntry, expiresAt *time.Time) (*PAT, error) {
 	opt := gitlab.CreateProjectAccessTokenOptions{
 		Name:   &tokenStorage.Name,

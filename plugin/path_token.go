@@ -117,6 +117,11 @@ func pathToken(b *GitlabBackend) []*framework.Path {
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathTokenCreate,
 				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathTokenList,
+					Summary:  "List project access tokens",
+					Examples: tokenListExamples,
+				},
 			},
 			HelpSynopsis:    pathTokenHelpSyn,
 			HelpDescription: pathTokenHelpDesc,
@@ -124,6 +129,35 @@ func pathToken(b *GitlabBackend) []*framework.Path {
 	}
 
 	return paths
+}
+
+func (b *GitlabBackend) pathTokenList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	gc, err := b.getClient(ctx, req.Storage)
+	if err != nil {
+		return logical.ErrorResponse("failed to obtain gitlab client - %s", err.Error()), nil
+	}
+
+	projectIDRaw, ok := data.GetOk("id")
+	if !ok {
+		return logical.ErrorResponse("missing required field 'id'"), nil
+	}
+	projectID := projectIDRaw.(int)
+
+	b.Logger().Debug("listing access tokens", "project_id", projectID)
+	tokens, err := gc.ListProjectAccessToken(projectID)
+	if err != nil {
+		return logical.ErrorResponse("failed to list project access tokens - " + err.Error()), nil
+	}
+
+	// Convert tokens to a list of maps for the response
+	var tokenList []map[string]interface{}
+	for _, token := range tokens {
+		tokenList = append(tokenList, tokenDetails(token))
+	}
+
+	return &logical.Response{Data: map[string]interface{}{
+		"tokens": tokenList,
+	}}, nil
 }
 
 const pathTokenHelpSyn = `Generate a project access token for a given project with token name, scopes.`
@@ -139,6 +173,15 @@ var tokenExamples = []framework.RequestExample{
 			"id":     1,
 			"name":   "MyProjectAccessToken",
 			"scopes": []string{"read_api", "read_repository"},
+		},
+	},
+}
+
+var tokenListExamples = []framework.RequestExample{
+	{
+		Description: "List project access tokens",
+		Data: map[string]interface{}{
+			"id": 1,
 		},
 	},
 }
