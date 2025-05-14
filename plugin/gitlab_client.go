@@ -30,7 +30,8 @@ type Client interface {
 	ListProjectAccessToken(int) ([]*PAT, error)
 	// CreateProjectAccessToken create access token for given a project ID
 	CreateProjectAccessToken(*BaseTokenStorageEntry, *time.Time) (*PAT, error)
-	// RevokeProjectAccessToken(*BaseTokenStorageEntry) error
+	// RevokeProjectAccessToken revokes the access token
+	RevokeProjectAccessToken(*BaseTokenStorageEntry) error
 	Valid() bool
 }
 
@@ -107,6 +108,12 @@ func (gc *gitlabClient) CreateProjectAccessToken(tokenStorage *BaseTokenStorageE
 	return pat, nil
 }
 
-// func (gc *gitlabClient) RevokeProjectAccessToken(tokenStorage *BaseTokenStorageEntry) error {
-// 	return nil
-// }
+func (gc *gitlabClient) RevokeProjectAccessToken(tokenStorage *BaseTokenStorageEntry) error {
+	// Use the GitLab API client to revoke the project access token
+	_, err := gc.client.ProjectAccessTokens.RevokeProjectAccessToken(tokenStorage.ID, tokenStorage.TokenID)
+	if err != nil {
+		return fmt.Errorf("failed to revoke project access token with ID %d for project ID %d: %w", tokenStorage.TokenID, tokenStorage.ID, err)
+	}
+
+	return nil
+}

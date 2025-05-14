@@ -7,16 +7,32 @@ increment_patch_version() {
   echo "$major.$minor.$patch"
 }
 
-# Ask for the current plugin version
-read -p "Enter the current plugin version (e.g., 1.0.0): " current_version
+# Get the current plugin version from "vault secrets list -detailed"
+echo "Fetching current plugin version..."
+current_version=$(vault secrets list -detailed | awk '/^gitlab\// {print $13}' | head -n 1 | sed 's/^v//')
+if [[ -z "$current_version" ]]; then
+  echo "Error: Could not retrieve the current plugin version. Is the gitlab plugin enabled?"
+  exit 1
+fi
+echo "Current plugin version is: $current_version"
 
 # Increment the patch version
 new_version=$(increment_patch_version "$current_version")
 echo "New plugin version will be: $new_version"
 
-# Ask for the GitLab personal access token
-read -sp "Enter your GitLab PAT (Personal Access Token): " PATGITLABTOKEN
-echo
+# Check if PATGITLABTOKEN is set in the environment
+if [[ -z "$PATGITLABTOKEN" ]]; then
+  read -sp "Enter your GitLab PAT (Personal Access Token): " PATGITLABTOKEN
+  echo
+else
+  echo "Using PATGITLABTOKEN from environment variable."
+fi
+
+# Ensure the token is not empty
+if [[ -z "$PATGITLABTOKEN" ]]; then
+  echo "Error: GitLab PAT token is required but not provided."
+  exit 1
+fi
 
 # Build the plugin
 echo "Building the plugin..."

@@ -34,6 +34,7 @@ type TokenStorageEntry struct {
 type BaseTokenStorageEntry struct {
 	// `json:"" structs:"" mapstructure:""`
 	ID          int      `json:"id" structs:"id" mapstructure:"id"`
+	TokenID     int      `json:"token_id" structs:"token_id" mapstructure:"token_id"`
 	Name        string   `json:"name" structs:"name" mapstructure:"name"`
 	Scopes      []string `json:"scopes" structs:"scopes" mapstructure:"scopes"`
 	AccessLevel int      `json:"access_level" structs:"access_level" mapstructure:"access_level,omitempty"`
